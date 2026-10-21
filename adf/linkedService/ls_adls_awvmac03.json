@@ -1,0 +1,11 @@
+{
+    "name": "ls_adls_awvmac03",
+    "properties": {
+        "description": "ADLS Gen2 account awvmac03. Data Factory authenticates with its system-assigned managed identity, so no keys are stored.",
+        "annotations": [],
+        "type": "AzureBlobFS",
+        "typeProperties": {
+            "url": "https://awvmac03.dfs.core.windows.net/"
+        }
+    }
+}

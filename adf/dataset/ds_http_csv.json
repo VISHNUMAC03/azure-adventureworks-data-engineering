@@ -1,0 +1,29 @@
+{
+    "name": "ds_http_csv",
+    "properties": {
+        "description": "Any CSV on GitHub. The relative URL is supplied per table by the ForEach loop.",
+        "linkedServiceName": {
+            "referenceName": "ls_github_http",
+            "type": "LinkedServiceReference"
+        },
+        "parameters": {
+            "p_rel_url": { "type": "string" }
+        },
+        "annotations": [],
+        "type": "DelimitedText",
+        "typeProperties": {
+            "location": {
+                "type": "HttpServerLocation",
+                "relativeUrl": {
+                    "value": "@dataset().p_rel_url",
+                    "type": "Expression"
+                }
+            },
+            "columnDelimiter": ",",
+            "escapeChar": "\\",
+            "firstRowAsHeader": true,
+            "quoteChar": "\""
+        },
+        "schema": []
+    }
+}

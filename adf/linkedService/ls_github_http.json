@@ -1,0 +1,13 @@
+{
+    "name": "ls_github_http",
+    "properties": {
+        "description": "Anonymous HTTP connection to raw.githubusercontent.com, the source of the AdventureWorks CSV files.",
+        "annotations": [],
+        "type": "HttpServer",
+        "typeProperties": {
+            "url": "https://raw.githubusercontent.com/",
+            "enableServerCertificateValidation": true,
+            "authenticationType": "Anonymous"
+        }
+    }
+}
