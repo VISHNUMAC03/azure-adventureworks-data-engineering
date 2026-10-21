@@ -1,11 +1,11 @@
 {
-    "name": "ls_github_http",
+    "name": "HttpLinkedService",
+    "type": "Microsoft.DataFactory/factories/linkedservices",
     "properties": {
-        "description": "Anonymous HTTP connection to raw.githubusercontent.com, the source of the AdventureWorks CSV files.",
         "annotations": [],
         "type": "HttpServer",
         "typeProperties": {
-            "url": "https://raw.githubusercontent.com/",
+            "url": "https://raw.githubusercontent.com",
             "enableServerCertificateValidation": true,
             "authenticationType": "Anonymous"
         }

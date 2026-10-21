@@ -129,13 +129,13 @@ df_ter.display()
 # MAGIC %md
 # MAGIC ## 5. Write the clean (silver) layer as Parquet
 # MAGIC `overwrite` keeps the notebook safe to re-run without duplicating rows.
+# MAGIC Product_Categories is only inspected above; the seven tables below are published to `clean`.
 
 # COMMAND ----------
 
 tables = {
     "Calendar": df_cal,
     "Customers": df_cus,
-    "Product_Categories": df_prodcat,
     "Product_Subcategories": df_prodsubcat,
     "Products": df_prod,
     "Returns": df_ret,

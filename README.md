@@ -16,11 +16,11 @@ following the **medallion architecture** (raw → clean → final).
 
 ## What this project demonstrates
 
-- **Dynamic ingestion.** One parameterised Data Factory pipeline loads all 10 tables. Adding a table means adding one line to a JSON control file, not building a new pipeline.
+- **Dynamic ingestion.** One parameterised Data Factory pipeline loads all 10 source files. Adding a table means adding one entry to a JSON control file, not building a new pipeline.
 - **Medallion lakehouse on ADLS Gen2.** Separate `raw`, `clean` and `final` containers, with CSV in bronze and Parquet in silver and gold.
 - **Distributed transformations.** PySpark cleaning, type casting, enrichment and aggregation on a Databricks cluster.
 - **Serverless data warehousing.** Synapse reads Parquet in place with `OPENROWSET` views and materialises gold tables with `CETAS`.
-- **Secure service-to-service access.** A service principal for Databricks and managed identities for Data Factory and Synapse, with no storage keys in code.
+- **Service-to-service access.** A Microsoft Entra service principal for Databricks and the workspace managed identity for Synapse. No keys or secrets are committed.
 - **Real troubleshooting.** Region capacity limits, Spark errors and re-runnable SQL, documented [below](#challenges-and-how-i-solved-them).
 
 ## Tech stack
@@ -29,11 +29,11 @@ following the **medallion architecture** (raw → clean → final).
 |---|---|---|
 | Source | GitHub (HTTP) | 10 AdventureWorks CSV files ([VISHNUMAC03/AWDataset](https://github.com/VISHNUMAC03/AWDataset)) |
 | Ingestion | Azure Data Factory | Lookup + ForEach + parameterised Copy activity |
-| Storage | Azure Data Lake Storage Gen2 | `raw`, `clean` and `final` containers on account `awvmac03` |
-| Transformation | Azure Databricks · PySpark | `Clean_Layer` notebook on `AWProjectCluster` |
-| Serving | Azure Synapse Analytics (serverless SQL) | `awdatabase`, schema `final`: views + external tables |
+| Storage | Azure Data Lake Storage Gen2 | `parameters`, `raw`, `clean` and `final` containers on account `awvmac03` |
+| Transformation | Azure Databricks · PySpark | `Clean_Layer` notebook |
+| Serving | Azure Synapse Analytics (serverless SQL) | `awdatabase`, schema `final`: 7 views + 1 external table |
 | Reporting | Power BI | Connects to the Synapse serverless SQL endpoint |
-| Security | Microsoft Entra ID | Service principal, managed identities, RBAC (Storage Blob Data Contributor) |
+| Security | Microsoft Entra ID | Service principal, managed identity, RBAC (Storage Blob Data Contributor) |
 
 ## Azure resources
 
@@ -41,17 +41,23 @@ All resources live in one resource group, `AWPROJECT`.
 
 ![Resource group](screenshots/01-resource-group.png)
 
+The data lake has one container per layer, plus `parameters` for the pipeline's control file.
+
+![ADLS Gen2 containers](screenshots/02d-adls-containers.png)
+
 ## 1. Bronze: dynamic ingestion with Azure Data Factory
 
-Instead of one Copy activity per file, the pipeline reads a control file and loops over it.
+Instead of one Copy activity per file, the `DynamicGitToRaw` pipeline reads a control file and loops over it.
 
 ```
-LookupGit (reads git.json, first row only = false)
-   └── ForEachGit (items = @activity('LookupGit').output.value, parallel)
-          └── CopyRawData: HTTP (GitHub) ➜ ADLS raw/<p_Sink_Folder>/<p_Sink_File>
+LookupGit (DS_Git_Parameters → parameters/git.json, first row only = false)
+   └── ForEachGit (items = @activity('LookupGit').output.value)
+          └── DyamicCopy: HTTP (GitHub) ➜ ADLS raw/<p_Sink_Folder>/<p_Sink_File>
 ```
 
-Each entry in [`adf/control/git.json`](adf/control/git.json) describes one table:
+![DynamicGitToRaw pipeline in ADF Studio](screenshots/02-adf-pipeline-canvas.png)
+
+Each entry in [`adf/control/git.json`](adf/control/git.json) describes one file:
 
 ```json
 {
@@ -61,8 +67,19 @@ Each entry in [`adf/control/git.json`](adf/control/git.json) describes one table
 }
 ```
 
-The pipeline, datasets and linked services are in [`adf/`](adf). The HTTP source dataset takes `p_rel_url`, and the
-ADLS sink dataset takes `p_sink_folder` and `p_sink_file`. Both are filled from `@item()` inside the loop.
+The pipeline, datasets and linked services in [`adf/`](adf) are exported from ADF Studio.
+The HTTP source dataset `DS_Git_To_Dynamic` takes `p_rel_url`, and the ADLS sink dataset `DS_Sink_Dynamic` takes
+`p_Sink_Folder` and `p_File_Name`. Both are filled from `@item()` inside the loop.
+
+A successful run copies all 10 files. The activity runs show the Lookup, the ForEach and one copy per file:
+
+![Pipeline runs in the Monitor tab](screenshots/02b-adf-pipeline-runs.png)
+
+![Activity runs of the successful pipeline run](screenshots/02b-adf-run-succeeded.png)
+
+The `raw` container ends up with one folder per source file:
+
+![Raw container with one folder per table](screenshots/02c-adls-raw-container.png)
 
 ## 2. Silver: transformations with Azure Databricks
 
@@ -76,11 +93,23 @@ ADLS sink dataset takes `p_sink_folder` and `p_sink_file`. Both are filled from 
 | Customers | Built `fullName` from `Prefix`, `FirstName` and `LastName` with `concat_ws` |
 | Products | Kept the SKU family (`split` on `-`) and the first word of the product name |
 | Sales (2015–2017) | Read all three years with one wildcard path, cast `StockDate` to timestamp, re-prefixed `OrderNumber` (S → T), added a line-level `multiply` column |
-| All tables | Written as Parquet to `clean/<Table>/` with `overwrite`, so the notebook is safe to re-run |
+| Published tables | Written as Parquet to `clean/<Table>/`. The repository version uses `overwrite`, so the notebook is safe to re-run |
 
 ![Calendar transformation in Databricks](screenshots/04-databricks-calendar-transform.png)
 
 ![Customers with the new fullName column](screenshots/05-databricks-customers-fullname.png)
+
+![Sales transformations](screenshots/05d-databricks-sales-transform.png)
+
+The Sales table is written to the clean layer, followed by a quick check of orders per day:
+
+![Writing Sales to the clean container](screenshots/05b-databricks-write-clean.png)
+
+![Orders per day, 2015 to 2017](screenshots/05e-databricks-orders-chart.png)
+
+The three yearly sales files arrive as one `Sales` folder in `clean`:
+
+![Clean container](screenshots/05c-adls-clean-container.png)
 
 ## 3. Gold: serving with Azure Synapse serverless SQL
 
@@ -88,40 +117,54 @@ The `final` schema exposes the clean Parquet files as SQL views ([`synapse/02_cr
 Nothing is copied: serverless SQL reads the files in place and bills per query.
 
 ```sql
-CREATE OR ALTER VIEW final.calendar AS
+CREATE OR ALTER VIEW final.Sales AS
 SELECT * FROM OPENROWSET(
-    BULK 'https://awvmac03.dfs.core.windows.net/clean/Calendar/',
+    BULK 'https://awvmac03.dfs.core.windows.net/clean/Sales/',
     FORMAT = 'PARQUET'
 ) AS query1;
 ```
+
+![Gold layer objects in awdatabase](screenshots/06b-synapse-gold-objects.png)
 
 ![OPENROWSET view in Synapse](screenshots/06-synapse-openrowset-view.png)
 
 *Re-running the original `CREATE VIEW` showed the view already existed in `awdatabase`. That is why the scripts in this repository use `CREATE OR ALTER`.*
 
-For downstream tools, [`synapse/03_external_tables.sql`](synapse/03_external_tables.sql) sets up a managed-identity credential,
+Querying the gold view:
+
+![SELECT TOP 100 from final.Sales](screenshots/07-synapse-query-result.png)
+
+For downstream tools, [`synapse/03_external_tables.sql`](synapse/03_external_tables.sql) sets up a credential,
 external data sources and a Parquet file format. A **CETAS** statement then materialises `final.extsales` back to the lake.
-[`synapse/04_analysis_queries.sql`](synapse/04_analysis_queries.sql) answers example business questions from the gold layer.
+
+![Querying the external table final.extsales](screenshots/08-synapse-external-table.png)
+
+![CETAS output in final/extsales](screenshots/08b-adls-final-extsales.png)
+
+[`synapse/04_analysis_queries.sql`](synapse/04_analysis_queries.sql) answers example business questions from the gold layer,
+such as orders and units sold by region:
+
+![Units sold by region](screenshots/09-synapse-sales-by-region.png)
 
 ## 4. Reporting: Power BI
 
-Power BI connects to the Synapse **serverless SQL endpoint**, reads `awdatabase` and queries the `final` views and external tables.
+Power BI connects to the Synapse **serverless SQL endpoint**, reads `awdatabase` and queries the `final` views and external table.
 
 ## Security and access
 
 | From | To | How |
 |---|---|---|
-| Data Factory | ADLS Gen2 | System-assigned managed identity |
-| Databricks | ADLS Gen2 | Microsoft Entra service principal, OAuth. Secrets come from a Databricks secret scope (`dbutils.secrets.get`) |
+| Data Factory | ADLS Gen2 | Linked service `StorageDataLake`. Its credential is stored encrypted in Data Factory and removed from the exported JSON |
+| Databricks | ADLS Gen2 | Microsoft Entra service principal, OAuth. The repository version reads its credentials from a Databricks secret scope (`dbutils.secrets.get`) |
 | Synapse | ADLS Gen2 | Workspace managed identity through a database scoped credential |
-| Every identity | Storage account | `Storage Blob Data Contributor` role assignment |
+| Service principal and Synapse | Storage account | `Storage Blob Data Contributor` role assignment |
 
 No keys, secrets or passwords are committed to this repository.
 
 ## Challenges and how I solved them
 
 **1. Synapse would not deploy in East US.** The workspace deployment failed with `SqlServerRegionDoesNotAllowProvisioning`:
-the region was not accepting new SQL servers for my subscription. I redeployed the workspace in **West US 2**, which is why its default storage account lives in a different region from the rest of the resource group.
+the region was not accepting new SQL servers for my subscription. I redeployed the workspace in **Sweden Central**, which is why it and its default storage account sit in a different region from the rest of the resource group.
 
 ![Region capacity error](screenshots/c1-synapse-region-error.png)
 
@@ -142,11 +185,11 @@ They also use `IF NOT EXISTS` and `CREATE OR ALTER`, so re-running them never fa
 ## Repository structure
 
 ```
-├── adf/
-│   ├── control/git.json                    # one entry per table: source URL, sink folder, sink file
-│   ├── pipeline/pl_dynamic_git_to_raw.json # Lookup → ForEach → Copy
-│   ├── dataset/                            # parameterised HTTP source, ADLS sink, JSON control file
-│   └── linkedService/                      # GitHub (HTTP) and ADLS Gen2 (managed identity)
+├── adf/                                    # exported from ADF Studio
+│   ├── control/git.json                    # one entry per file: source URL, sink folder, sink file
+│   ├── pipeline/DynamicGitToRaw.json       # Lookup → ForEach → Copy
+│   ├── dataset/                            # DS_Git_Parameters, DS_Git_To_Dynamic, DS_Sink_Dynamic
+│   └── linkedService/                      # HttpLinkedService (GitHub), StorageDataLake (ADLS Gen2)
 ├── databricks/Clean_Layer.py               # raw → clean PySpark notebook (Databricks source format)
 ├── synapse/
 │   ├── 01_create_schema.sql
@@ -161,7 +204,7 @@ They also use `IF NOT EXISTS` and `CREATE OR ALTER`, so re-running them never fa
 
 1. Create a resource group with an ADLS Gen2 storage account (hierarchical namespace on) and the containers `parameters`, `raw`, `clean` and `final`.
 2. Upload [`adf/control/git.json`](adf/control/git.json) to the `parameters` container.
-3. Create a Data Factory, give its managed identity **Storage Blob Data Contributor** on the storage account, and import the JSON in [`adf/`](adf) (or rebuild it in ADF Studio). Run `pl_dynamic_git_to_raw`.
+3. Create a Data Factory and import the JSON in [`adf/`](adf) (or rebuild it in ADF Studio). Set the authentication on `StorageDataLake` (managed identity is the recommended option), then run `DynamicGitToRaw`.
 4. Create a Databricks workspace and cluster. Register an app (service principal), grant it **Storage Blob Data Contributor**, and store its client ID, tenant ID and secret in a secret scope named `aw-project-scope`. Import and run [`databricks/Clean_Layer.py`](databricks/Clean_Layer.py).
 5. Create a Synapse workspace, grant its managed identity **Storage Blob Data Contributor**, create a serverless database `awdatabase`, and run the scripts in [`synapse/`](synapse) in order.
 6. In Power BI, choose **Get data → Azure Synapse Analytics SQL**, enter the serverless SQL endpoint and database `awdatabase`, and load the `final` views.
@@ -169,6 +212,7 @@ They also use `IF NOT EXISTS` and `CREATE OR ALTER`, so re-running them never fa
 ## What I would add next
 
 - A schedule or storage-event trigger on the Data Factory pipeline, plus a Databricks activity, so a single pipeline runs bronze → silver end to end.
+- Managed-identity authentication for the Data Factory linked service, and parallel ForEach iterations (it runs sequentially today).
 - Incremental loads with watermarks instead of full reloads.
 - Delta Lake tables in silver for ACID writes and time travel, governed with Unity Catalog.
 - Azure Key Vault-backed secret scopes, and CI/CD for Data Factory with Git integration and ARM template deployment.

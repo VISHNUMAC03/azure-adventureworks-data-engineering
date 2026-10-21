@@ -1,13 +1,14 @@
 {
-    "name": "ds_http_csv",
+    "name": "DS_Git_To_Dynamic",
     "properties": {
-        "description": "Any CSV on GitHub. The relative URL is supplied per table by the ForEach loop.",
         "linkedServiceName": {
-            "referenceName": "ls_github_http",
+            "referenceName": "HttpLinkedService",
             "type": "LinkedServiceReference"
         },
         "parameters": {
-            "p_rel_url": { "type": "string" }
+            "p_rel_url": {
+                "type": "String"
+            }
         },
         "annotations": [],
         "type": "DelimitedText",
@@ -25,5 +26,6 @@
             "quoteChar": "\""
         },
         "schema": []
-    }
+    },
+    "type": "Microsoft.DataFactory/factories/datasets"
 }

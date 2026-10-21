@@ -1,14 +1,17 @@
 {
-    "name": "ds_adls_raw_csv",
+    "name": "DS_Sink_Dynamic",
     "properties": {
-        "description": "Landing location in the raw (bronze) container. Folder and file name come from git.json.",
         "linkedServiceName": {
-            "referenceName": "ls_adls_awvmac03",
+            "referenceName": "StorageDataLake",
             "type": "LinkedServiceReference"
         },
         "parameters": {
-            "p_sink_folder": { "type": "string" },
-            "p_sink_file": { "type": "string" }
+            "p_Sink_Folder": {
+                "type": "String"
+            },
+            "p_File_Name": {
+                "type": "String"
+            }
         },
         "annotations": [],
         "type": "DelimitedText",
@@ -16,11 +19,11 @@
             "location": {
                 "type": "AzureBlobFSLocation",
                 "fileName": {
-                    "value": "@dataset().p_sink_file",
+                    "value": "@dataset().p_File_Name",
                     "type": "Expression"
                 },
                 "folderPath": {
-                    "value": "@dataset().p_sink_folder",
+                    "value": "@dataset().p_Sink_Folder",
                     "type": "Expression"
                 },
                 "fileSystem": "raw"
@@ -31,5 +34,6 @@
             "quoteChar": "\""
         },
         "schema": []
-    }
+    },
+    "type": "Microsoft.DataFactory/factories/datasets"
 }

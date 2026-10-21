@@ -1,65 +1,38 @@
 {
-    "name": "pl_dynamic_git_to_raw",
+    "name": "DynamicGitToRaw",
     "properties": {
-        "description": "Config-driven ingestion: one Copy activity loads every table listed in git.json from GitHub into the raw container.",
         "activities": [
             {
-                "name": "LookupGit",
-                "description": "Read every entry of the control file (First row only = false).",
-                "type": "Lookup",
-                "dependsOn": [],
-                "policy": {
-                    "timeout": "0.12:00:00",
-                    "retry": 0,
-                    "retryIntervalInSeconds": 30,
-                    "secureOutput": false,
-                    "secureInput": false
-                },
-                "typeProperties": {
-                    "source": {
-                        "type": "JsonSource",
-                        "storeSettings": {
-                            "type": "AzureBlobFSReadSettings",
-                            "recursive": true,
-                            "enablePartitionDiscovery": false
-                        },
-                        "formatSettings": { "type": "JsonReadSettings" }
-                    },
-                    "dataset": {
-                        "referenceName": "ds_adls_git_json",
-                        "type": "DatasetReference"
-                    },
-                    "firstRowOnly": false
-                }
-            },
-            {
                 "name": "ForEachGit",
-                "description": "Loop over the tables returned by the lookup and copy each one in parallel.",
                 "type": "ForEach",
                 "dependsOn": [
                     {
                         "activity": "LookupGit",
-                        "dependencyConditions": [ "Succeeded" ]
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
                     }
                 ],
+                "userProperties": [],
                 "typeProperties": {
                     "items": {
                         "value": "@activity('LookupGit').output.value",
                         "type": "Expression"
                     },
-                    "isSequential": false,
+                    "isSequential": true,
                     "activities": [
                         {
-                            "name": "CopyRawData",
+                            "name": "DyamicCopy",
                             "type": "Copy",
                             "dependsOn": [],
                             "policy": {
                                 "timeout": "0.12:00:00",
-                                "retry": 1,
+                                "retry": 0,
                                 "retryIntervalInSeconds": 30,
                                 "secureOutput": false,
                                 "secureInput": false
                             },
+                            "userProperties": [],
                             "typeProperties": {
                                 "source": {
                                     "type": "DelimitedTextSource",
@@ -67,22 +40,34 @@
                                         "type": "HttpReadSettings",
                                         "requestMethod": "GET"
                                     },
-                                    "formatSettings": { "type": "DelimitedTextReadSettings" }
+                                    "formatSettings": {
+                                        "type": "DelimitedTextReadSettings"
+                                    }
                                 },
                                 "sink": {
                                     "type": "DelimitedTextSink",
-                                    "storeSettings": { "type": "AzureBlobFSWriteSettings" },
+                                    "storeSettings": {
+                                        "type": "AzureBlobFSWriteSettings"
+                                    },
                                     "formatSettings": {
                                         "type": "DelimitedTextWriteSettings",
                                         "quoteAllText": true,
-                                        "fileExtension": ".csv"
+                                        "fileExtension": ".txt"
                                     }
                                 },
-                                "enableStaging": false
+                                "enableStaging": false,
+                                "translator": {
+                                    "type": "TabularTranslator",
+                                    "typeConversion": true,
+                                    "typeConversionSettings": {
+                                        "allowDataTruncation": true,
+                                        "treatBooleanAsNumber": false
+                                    }
+                                }
                             },
                             "inputs": [
                                 {
-                                    "referenceName": "ds_http_csv",
+                                    "referenceName": "DS_Git_To_Dynamic",
                                     "type": "DatasetReference",
                                     "parameters": {
                                         "p_rel_url": {
@@ -94,14 +79,14 @@
                             ],
                             "outputs": [
                                 {
-                                    "referenceName": "ds_adls_raw_csv",
+                                    "referenceName": "DS_Sink_Dynamic",
                                     "type": "DatasetReference",
                                     "parameters": {
-                                        "p_sink_folder": {
+                                        "p_Sink_Folder": {
                                             "value": "@item().p_Sink_Folder",
                                             "type": "Expression"
                                         },
-                                        "p_sink_file": {
+                                        "p_File_Name": {
                                             "value": "@item().p_Sink_File",
                                             "type": "Expression"
                                         }
@@ -111,8 +96,41 @@
                         }
                     ]
                 }
+            },
+            {
+                "name": "LookupGit",
+                "type": "Lookup",
+                "dependsOn": [],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "source": {
+                        "type": "JsonSource",
+                        "storeSettings": {
+                            "type": "AzureBlobFSReadSettings",
+                            "recursive": true,
+                            "enablePartitionDiscovery": false
+                        },
+                        "formatSettings": {
+                            "type": "JsonReadSettings"
+                        }
+                    },
+                    "dataset": {
+                        "referenceName": "DS_Git_Parameters",
+                        "type": "DatasetReference"
+                    },
+                    "firstRowOnly": false
+                }
             }
         ],
-        "annotations": []
-    }
+        "annotations": [],
+        "lastPublishTime": "2026-10-20T11:08:26Z"
+    },
+    "type": "Microsoft.DataFactory/factories/pipelines"
 }
