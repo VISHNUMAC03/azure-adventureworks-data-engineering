@@ -1,0 +1,60 @@
+table Returns
+	lineageTag: 5d8d4506-44bc-4db9-b12b-bee6e4d6938c
+
+	measure 'Quantity Returned' = SUM(Returns[ReturnQuantity])
+		formatString: #,0
+		lineageTag: f946ba38-8005-431e-b9d3-00864a4cefc0
+
+	measure 'Return Rate' = DIVIDE([Quantity Returned], [Quantity Sold])
+		formatString: 0.00%
+		lineageTag: f2c7d711-c839-4275-9040-a46f798cfe2f
+
+	column ReturnDate
+		dataType: dateTime
+		formatString: Short Date
+		lineageTag: 4a5cb338-aa35-47bc-9451-286fc5624d72
+		summarizeBy: none
+		sourceColumn: ReturnDate
+
+		annotation SummarizationSetBy = Automatic
+
+	column TerritoryKey
+		dataType: int64
+		formatString: 0
+		isHidden
+		lineageTag: 6643f7c6-ad89-4986-b502-99206be7928f
+		summarizeBy: none
+		sourceColumn: TerritoryKey
+
+		annotation SummarizationSetBy = Automatic
+
+	column ProductKey
+		dataType: int64
+		formatString: 0
+		isHidden
+		lineageTag: 5243dff5-7ab6-4fd4-b2f1-b67c7a2182fa
+		summarizeBy: none
+		sourceColumn: ProductKey
+
+		annotation SummarizationSetBy = Automatic
+
+	column ReturnQuantity
+		dataType: int64
+		formatString: 0
+		lineageTag: 7cb81c0c-8e2a-4626-88b1-0b4762501e33
+		summarizeBy: none
+		sourceColumn: ReturnQuantity
+
+		annotation SummarizationSetBy = Automatic
+
+	partition Returns = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(File.Contents(DataFolder & "\Returns.csv"), [Delimiter=",", Encoding=65001, QuoteStyle=QuoteStyle.Csv]),
+				    Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars=true]),
+				    Typed = Table.TransformColumnTypes(Promoted, {{"ReturnDate", type date}, {"TerritoryKey", Int64.Type}, {"ProductKey", Int64.Type}, {"ReturnQuantity", Int64.Type}}, "en-US")
+				in
+				    Typed
+
+	annotation PBI_ResultType = Table

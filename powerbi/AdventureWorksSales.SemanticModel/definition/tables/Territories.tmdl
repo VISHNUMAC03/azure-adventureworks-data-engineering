@@ -1,0 +1,48 @@
+table Territories
+	lineageTag: ddd74cc8-b37d-4c46-9ab4-e941416a65c2
+
+	column SalesTerritoryKey
+		dataType: int64
+		formatString: 0
+		isHidden
+		lineageTag: 1d437c1d-7288-4dc9-8fd7-e20e03a95c02
+		summarizeBy: none
+		sourceColumn: SalesTerritoryKey
+
+		annotation SummarizationSetBy = Automatic
+
+	column Region
+		dataType: string
+		lineageTag: e9ba111d-ab99-4220-96b1-1eb88c1547b4
+		summarizeBy: none
+		sourceColumn: Region
+
+		annotation SummarizationSetBy = Automatic
+
+	column Country
+		dataType: string
+		lineageTag: f5c5976a-90c0-4ff0-89c0-c83a482ae254
+		summarizeBy: none
+		sourceColumn: Country
+
+		annotation SummarizationSetBy = Automatic
+
+	column Continent
+		dataType: string
+		lineageTag: 869af190-4d43-4499-8e8e-d45d0f22d3d8
+		summarizeBy: none
+		sourceColumn: Continent
+
+		annotation SummarizationSetBy = Automatic
+
+	partition Territories = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(File.Contents(DataFolder & "\Territories.csv"), [Delimiter=",", Encoding=65001, QuoteStyle=QuoteStyle.Csv]),
+				    Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars=true]),
+				    Typed = Table.TransformColumnTypes(Promoted, {{"SalesTerritoryKey", Int64.Type}, {"Region", type text}, {"Country", type text}, {"Continent", type text}}, "en-US")
+				in
+				    Typed
+
+	annotation PBI_ResultType = Table

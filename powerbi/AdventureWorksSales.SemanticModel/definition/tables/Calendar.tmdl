@@ -1,0 +1,70 @@
+table Calendar
+	dataCategory: Time
+	lineageTag: 34ffa0b4-c138-4fcf-9ae9-500122b6aa7d
+
+	column Date
+		dataType: dateTime
+		isKey
+		formatString: Short Date
+		lineageTag: d47734aa-3b4d-44e5-898c-30f008b332b4
+		summarizeBy: none
+		sourceColumn: Date
+
+		annotation SummarizationSetBy = Automatic
+
+	column Year
+		dataType: int64
+		formatString: 0
+		lineageTag: 7d50247e-55ce-471a-a15d-f4fd4a79fde5
+		summarizeBy: none
+		sourceColumn: Year
+
+		annotation SummarizationSetBy = Automatic
+
+	column Quarter
+		dataType: string
+		lineageTag: a7cf69e6-9ee4-4234-8243-490466c11b90
+		summarizeBy: none
+		sourceColumn: Quarter
+
+		annotation SummarizationSetBy = Automatic
+
+	column MonthNum
+		dataType: int64
+		formatString: 0
+		isHidden
+		lineageTag: 47ffbcdb-a11e-4bc1-aff8-5a4a13893e53
+		summarizeBy: none
+		sourceColumn: MonthNum
+
+		annotation SummarizationSetBy = Automatic
+
+	column Month
+		dataType: string
+		lineageTag: f7ad0e68-2318-4a57-8221-60cd3571b0e8
+		summarizeBy: none
+		sourceColumn: Month
+		sortByColumn: MonthNum
+
+		annotation SummarizationSetBy = Automatic
+
+	column MonthStart
+		dataType: dateTime
+		formatString: Short Date
+		lineageTag: a55f0b6c-5690-45c9-8df0-e3260c989c99
+		summarizeBy: none
+		sourceColumn: MonthStart
+
+		annotation SummarizationSetBy = Automatic
+
+	partition Calendar = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(File.Contents(DataFolder & "\Calendar.csv"), [Delimiter=",", Encoding=65001, QuoteStyle=QuoteStyle.Csv]),
+				    Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars=true]),
+				    Typed = Table.TransformColumnTypes(Promoted, {{"Date", type date}, {"Year", Int64.Type}, {"Quarter", type text}, {"MonthNum", Int64.Type}, {"Month", type text}, {"MonthStart", type date}}, "en-US")
+				in
+				    Typed
+
+	annotation PBI_ResultType = Table

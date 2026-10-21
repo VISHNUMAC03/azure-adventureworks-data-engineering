@@ -1,0 +1,157 @@
+table Sales
+	lineageTag: a6df71ad-42b8-4d2f-a606-77516bc94ce8
+
+	measure 'Total Revenue' = SUM(Sales[Revenue])
+		formatString: \$#,0
+		lineageTag: 56a289d0-182e-435a-b121-bfb061f14bf9
+
+	measure 'Revenue ($K)' = DIVIDE([Total Revenue], 1000)
+		formatString: \$#,0.0\K
+		lineageTag: c819d1a4-fc46-4516-a61a-0014b1ffcde6
+
+	measure 'Total Cost' = SUM(Sales[Cost])
+		formatString: \$#,0
+		lineageTag: 237a6838-88db-4da6-9887-14b6415ba236
+
+	measure 'Total Profit' = SUM(Sales[Profit])
+		formatString: \$#,0
+		lineageTag: 816eef2b-9f89-446d-8118-4a615617f86c
+
+	measure 'Profit Margin' = DIVIDE([Total Profit], [Total Revenue])
+		formatString: 0.0%
+		lineageTag: 7f7d0f5c-2c5e-4edc-a137-55fabd5f0409
+
+	measure 'Total Orders' = DISTINCTCOUNT(Sales[OrderNumber])
+		formatString: #,0
+		lineageTag: 721d58d4-3173-44eb-840a-538ab4601125
+
+	measure 'Quantity Sold' = SUM(Sales[OrderQuantity])
+		formatString: #,0
+		lineageTag: aa218f8f-4b28-491c-adca-a4c143f8d651
+
+	measure 'Customers' = DISTINCTCOUNT(Sales[CustomerKey])
+		formatString: #,0
+		lineageTag: 4f698d04-9084-4813-93e9-a16f32f499a8
+
+	measure 'Avg Order Value' = DIVIDE([Total Revenue], [Total Orders])
+		formatString: \$#,0.00
+		lineageTag: 1b3df156-9a5c-43a4-9204-db07abf5bdb2
+
+	measure 'Revenue per Customer' = DIVIDE([Total Revenue], [Customers])
+		formatString: \$#,0.00
+		lineageTag: 0368137a-b361-47a9-a1c2-1690f585fd73
+
+	column OrderDate
+		dataType: dateTime
+		formatString: Short Date
+		lineageTag: daecaec0-cca5-4560-b596-7d9daffc7459
+		summarizeBy: none
+		sourceColumn: OrderDate
+
+		annotation SummarizationSetBy = Automatic
+
+	column StockDate
+		dataType: dateTime
+		formatString: Short Date
+		isHidden
+		lineageTag: 390f2614-f41e-493d-a926-9afb55503280
+		summarizeBy: none
+		sourceColumn: StockDate
+
+		annotation SummarizationSetBy = Automatic
+
+	column OrderNumber
+		dataType: string
+		lineageTag: 684fcf5c-88f7-4408-b53d-ba2b6f4c8a65
+		summarizeBy: none
+		sourceColumn: OrderNumber
+
+		annotation SummarizationSetBy = Automatic
+
+	column ProductKey
+		dataType: int64
+		formatString: 0
+		isHidden
+		lineageTag: 8faf75da-b2ab-4732-85e0-5b8d04cc9f37
+		summarizeBy: none
+		sourceColumn: ProductKey
+
+		annotation SummarizationSetBy = Automatic
+
+	column CustomerKey
+		dataType: int64
+		formatString: 0
+		isHidden
+		lineageTag: 59154482-b2bc-476f-a1e3-b0abc817a2d1
+		summarizeBy: none
+		sourceColumn: CustomerKey
+
+		annotation SummarizationSetBy = Automatic
+
+	column TerritoryKey
+		dataType: int64
+		formatString: 0
+		isHidden
+		lineageTag: 587d83d6-2067-42d5-b1ad-58e5cd6dc196
+		summarizeBy: none
+		sourceColumn: TerritoryKey
+
+		annotation SummarizationSetBy = Automatic
+
+	column OrderLineItem
+		dataType: int64
+		formatString: 0
+		isHidden
+		lineageTag: b0b45caf-d079-470d-aed0-ec01ce42b61f
+		summarizeBy: none
+		sourceColumn: OrderLineItem
+
+		annotation SummarizationSetBy = Automatic
+
+	column OrderQuantity
+		dataType: int64
+		formatString: 0
+		lineageTag: c52b154f-2657-4eb4-9de5-ac2c5480a90a
+		summarizeBy: none
+		sourceColumn: OrderQuantity
+
+		annotation SummarizationSetBy = Automatic
+
+	column Revenue
+		dataType: double
+		formatString: #,0.00
+		lineageTag: cc71ec5c-edfc-419c-9f8c-a6662371be52
+		summarizeBy: none
+		sourceColumn: Revenue
+
+		annotation SummarizationSetBy = Automatic
+
+	column Cost
+		dataType: double
+		formatString: #,0.00
+		lineageTag: 8791a5e9-f591-4688-9295-835d141bb419
+		summarizeBy: none
+		sourceColumn: Cost
+
+		annotation SummarizationSetBy = Automatic
+
+	column Profit
+		dataType: double
+		formatString: #,0.00
+		lineageTag: 661e9657-f480-48d8-ba4e-61393a124ba7
+		summarizeBy: none
+		sourceColumn: Profit
+
+		annotation SummarizationSetBy = Automatic
+
+	partition Sales = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(File.Contents(DataFolder & "\Sales.csv"), [Delimiter=",", Encoding=65001, QuoteStyle=QuoteStyle.Csv]),
+				    Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars=true]),
+				    Typed = Table.TransformColumnTypes(Promoted, {{"OrderDate", type date}, {"StockDate", type date}, {"OrderNumber", type text}, {"ProductKey", Int64.Type}, {"CustomerKey", Int64.Type}, {"TerritoryKey", Int64.Type}, {"OrderLineItem", Int64.Type}, {"OrderQuantity", Int64.Type}, {"Revenue", type number}, {"Cost", type number}, {"Profit", type number}}, "en-US")
+				in
+				    Typed
+
+	annotation PBI_ResultType = Table

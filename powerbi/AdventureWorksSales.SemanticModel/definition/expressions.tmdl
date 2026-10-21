@@ -1,0 +1,4 @@
+expression DataFolder = "C:\Users\Aravind\azure-adventureworks-data-engineering\powerbi\data" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
+	lineageTag: bb48da07-288d-4d81-93c4-ae413e32995b
+
+	annotation PBI_ResultType = Text

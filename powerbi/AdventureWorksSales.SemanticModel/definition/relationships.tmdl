@@ -1,0 +1,27 @@
+relationship f2d785c5-0363-4f3f-a5ff-fc3482d7d7eb
+	fromColumn: Sales.ProductKey
+	toColumn: Products.ProductKey
+
+relationship b3397006-6dbe-439b-a58f-52d3f50fb3c2
+	fromColumn: Sales.CustomerKey
+	toColumn: Customers.CustomerKey
+
+relationship e2faf078-913f-4bca-a8ac-1c1f47916b52
+	fromColumn: Sales.TerritoryKey
+	toColumn: Territories.SalesTerritoryKey
+
+relationship b00f0d9d-bf70-4864-9044-9e57b0d172ef
+	fromColumn: Sales.OrderDate
+	toColumn: Calendar.Date
+
+relationship 4ee319d2-d34a-48af-8c48-2f6495b8c6fd
+	fromColumn: Returns.ProductKey
+	toColumn: Products.ProductKey
+
+relationship 24fe914b-a93a-4401-92e7-9a19e1e640bb
+	fromColumn: Returns.TerritoryKey
+	toColumn: Territories.SalesTerritoryKey
+
+relationship b894923c-f8a5-4e70-9a7c-834c6b369b93
+	fromColumn: Returns.ReturnDate
+	toColumn: Calendar.Date

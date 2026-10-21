@@ -1,0 +1,98 @@
+table Customers
+	lineageTag: 5095d012-56db-46d9-9e63-7f46b7aa41a3
+
+	column CustomerKey
+		dataType: int64
+		formatString: 0
+		isHidden
+		lineageTag: 020e9c8a-2d5c-4b4a-8356-07ff7b5c9545
+		summarizeBy: none
+		sourceColumn: CustomerKey
+
+		annotation SummarizationSetBy = Automatic
+
+	column Gender
+		dataType: string
+		lineageTag: ad257ece-7321-42f7-985c-9e471d6e7b04
+		summarizeBy: none
+		sourceColumn: Gender
+
+		annotation SummarizationSetBy = Automatic
+
+	column MaritalStatus
+		dataType: string
+		lineageTag: f75b181e-5ff0-4ad2-8247-8bee32249c99
+		summarizeBy: none
+		sourceColumn: MaritalStatus
+
+		annotation SummarizationSetBy = Automatic
+
+	column AgeGroup
+		dataType: string
+		lineageTag: 35becac3-3389-4223-8c2d-4c25aa0e32f3
+		summarizeBy: none
+		sourceColumn: AgeGroup
+
+		annotation SummarizationSetBy = Automatic
+
+	column AnnualIncome
+		dataType: double
+		formatString: #,0.00
+		lineageTag: 902a78bb-6dca-4c3e-974c-6c3a6b5b1551
+		summarizeBy: none
+		sourceColumn: AnnualIncome
+
+		annotation SummarizationSetBy = Automatic
+
+	column IncomeBand
+		dataType: string
+		lineageTag: 4824b592-217d-425b-96bf-a8bed1710a7d
+		summarizeBy: none
+		sourceColumn: IncomeBand
+
+		annotation SummarizationSetBy = Automatic
+
+	column TotalChildren
+		dataType: int64
+		formatString: 0
+		lineageTag: beb5a38c-3249-470a-b32f-9887fd247966
+		summarizeBy: none
+		sourceColumn: TotalChildren
+
+		annotation SummarizationSetBy = Automatic
+
+	column EducationLevel
+		dataType: string
+		lineageTag: 73ea3155-66b6-4e71-ae80-1bd939ca238f
+		summarizeBy: none
+		sourceColumn: EducationLevel
+
+		annotation SummarizationSetBy = Automatic
+
+	column Occupation
+		dataType: string
+		lineageTag: 7429a945-b983-4272-9e62-a911e03b5770
+		summarizeBy: none
+		sourceColumn: Occupation
+
+		annotation SummarizationSetBy = Automatic
+
+	column HomeOwner
+		dataType: string
+		lineageTag: 3ec33e9f-660f-46e6-931c-ebe0260544bd
+		summarizeBy: none
+		sourceColumn: HomeOwner
+
+		annotation SummarizationSetBy = Automatic
+
+	partition Customers = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(File.Contents(DataFolder & "\Customers.csv"), [Delimiter=",", Encoding=65001, QuoteStyle=QuoteStyle.Csv]),
+				    Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars=true]),
+				    Typed = Table.TransformColumnTypes(Promoted, {{"CustomerKey", Int64.Type}, {"Gender", type text}, {"MaritalStatus", type text}, {"AgeGroup", type text}, {"AnnualIncome", type number}, {"IncomeBand", type text}, {"TotalChildren", Int64.Type}, {"EducationLevel", type text}, {"Occupation", type text}, {"HomeOwner", type text}}, "en-US")
+				in
+				    Typed
+
+	annotation PBI_ResultType = Table

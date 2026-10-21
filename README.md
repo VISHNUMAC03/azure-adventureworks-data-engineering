@@ -146,9 +146,46 @@ such as orders and units sold by region:
 
 ![Units sold by region](screenshots/09-synapse-sales-by-region.png)
 
-## 4. Reporting: Power BI
+## 4. Reporting: interactive Power BI dashboard
 
-Power BI connects to the Synapse **serverless SQL endpoint**, reads `awdatabase` and queries the `final` views and external table.
+[`powerbi/`](powerbi) holds a four-page Power BI report, saved as a Power BI Project (`.pbip`) so every page, visual and DAX measure is plain text under version control.
+
+- **Star schema.** `Sales` and `Returns` facts with `Calendar`, `Products`, `Customers` and `Territories` dimensions and 7 relationships.
+- **DAX measures.** Revenue, profit, profit margin, orders, customers, average order value, revenue per customer, units returned and return rate.
+- **Interactivity.** Year, country, category and occupation slicers filter every visual on a page, and clicking a bar or slice cross-filters the rest.
+
+| Page | What it answers |
+|---|---|
+| Sales Overview | How much do we sell, how is it trending, and where? |
+| Products | Which subcategories and products drive revenue, volume and returns? |
+| Customers | Who buys: occupation, income, age, education and gender |
+| Returns | How the return rate moves over time, by category, country and product |
+
+![Sales overview](screenshots/10-powerbi-overview.png)
+
+The same page filtered to Australia with the country slicer:
+
+![Sales overview filtered to Australia](screenshots/14-powerbi-filtered-australia.png)
+
+![Product performance](screenshots/11-powerbi-products.png)
+
+![Customer insights](screenshots/12-powerbi-customers.png)
+
+![Returns analysis](screenshots/13-powerbi-returns.png)
+
+**Key insights**
+
+- $24.9M revenue and $10.5M profit (42% margin) from 25,164 orders between January 2015 and June 2017.
+- Revenue in the first half of 2017 ($9.19M) almost matched all of 2016 ($9.32M).
+- Bikes bring 95% of revenue, while accessories make up 69% of units sold. Bikes also have the highest return rate (3.1% against 2.2% overall).
+- The United States and Australia bring 62% of revenue.
+- Professionals are the highest-spending occupation ($8.5M, 34% of revenue), and customers aged 45–54 bring the most revenue.
+
+**Run it locally.** The report reads a CSV snapshot of the gold layer, so it opens without Azure credentials.
+[`powerbi/prepare_data.py`](powerbi/prepare_data.py) builds the snapshot from the source CSVs with the same rules as the clean layer,
+and [`powerbi/build_pbip.py`](powerbi/build_pbip.py) generates the project. Open `AdventureWorksSales.pbip` in Power BI Desktop,
+set the `DataFolder` parameter (**Transform data → Edit parameters**) to your `powerbi/data` folder, and select **Refresh**.
+In production, point the queries at the Synapse serverless SQL endpoint and the `final` views instead.
 
 ## Security and access
 
@@ -196,6 +233,13 @@ They also use `IF NOT EXISTS` and `CREATE OR ALTER`, so re-running them never fa
 │   ├── 02_create_views.sql                 # OPENROWSET views over clean Parquet
 │   ├── 03_external_tables.sql              # credential, data sources, file format, CETAS
 │   └── 04_analysis_queries.sql
+├── powerbi/
+│   ├── AdventureWorksSales.pbip            # open this in Power BI Desktop
+│   ├── AdventureWorksSales.SemanticModel/  # TMDL: tables, relationships, DAX measures
+│   ├── AdventureWorksSales.Report/         # PBIR: 4 pages of visuals
+│   ├── data/                               # CSV snapshot of the gold layer
+│   ├── prepare_data.py                     # builds the snapshot
+│   └── build_pbip.py                       # generates the Power BI project
 ├── architecture/architecture.png
 └── screenshots/
 ```
@@ -207,7 +251,7 @@ They also use `IF NOT EXISTS` and `CREATE OR ALTER`, so re-running them never fa
 3. Create a Data Factory and import the JSON in [`adf/`](adf) (or rebuild it in ADF Studio). Set the authentication on `StorageDataLake` (managed identity is the recommended option), then run `DynamicGitToRaw`.
 4. Create a Databricks workspace and cluster. Register an app (service principal), grant it **Storage Blob Data Contributor**, and store its client ID, tenant ID and secret in a secret scope named `aw-project-scope`. Import and run [`databricks/Clean_Layer.py`](databricks/Clean_Layer.py).
 5. Create a Synapse workspace, grant its managed identity **Storage Blob Data Contributor**, create a serverless database `awdatabase`, and run the scripts in [`synapse/`](synapse) in order.
-6. In Power BI, choose **Get data → Azure Synapse Analytics SQL**, enter the serverless SQL endpoint and database `awdatabase`, and load the `final` views.
+6. Open [`powerbi/AdventureWorksSales.pbip`](powerbi) in Power BI Desktop, set the `DataFolder` parameter and refresh. To report on live data instead, choose **Get data → Azure Synapse Analytics SQL**, enter the serverless SQL endpoint and database `awdatabase`, and load the `final` views.
 
 ## What I would add next
 
